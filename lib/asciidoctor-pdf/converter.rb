@@ -139,6 +139,9 @@ class Converter < ::Prawn::Document
     if doc.attr?('footer') || doc.attr?('footer-left') || doc.attr?('footer-right')
       stamp_footer doc
     end
+    if doc.attr?('header') || doc.attr?('header-left') || doc.attr?('header-right')
+      stamp_header doc
+    end
     add_outline doc, num_toc_levels, toc_page_nums, num_front_matter_pages
     catalog.data[:ViewerPreferences] = [:FitWindow]
 
@@ -1206,6 +1209,38 @@ class Converter < ::Prawn::Document
   def admonition_icon_size node, max_size = 24
     min_height = bounds.height.floor
     min_height < max_size ? min_height : max_size
+  end
+
+  def stamp_header doc, opts = {}
+    skip = opts[:skip] || 0
+    start = skip + 0
+    top_bounds = page_height - (page.margins[:top] / 2.0 + @theme.vertical_rhythm / 2.0)
+    repeat (start..page_count), dynamic: true do
+      # don't stamp pages which are imported / inserts
+      next if page.imported_page?
+      theme_font :header do
+        canvas do
+          if @theme.header_border_color && @theme.header_border_color != 'transparent'
+            save_graphics_state do
+              line_width @theme.base_border_width
+              stroke_color @theme.header_border_color
+              stroke_horizontal_line left_margin, bounds.width - right_margin, at: top_bounds
+            end
+          end
+          indent left_margin + 20, right_margin + 20 do
+            if doc.attr? 'header'
+              formatted_text_box [text: doc.attr('header'), color: @theme.footer_font_color], at: [0, top_bounds + (page.margins[:top] / 2.0)], align: :center
+            end
+            if doc.attr? 'header-right'
+              formatted_text_box [text: doc.attr('header-right'), color: @theme.footer_font_color], at: [0, top_bounds + (page.margins[:top] / 2.0)], align: :right
+            end
+            if doc.attr? 'header-left'
+              formatted_text_box [text: doc.attr('header-left'), color: @theme.footer_font_color], at: [0, top_bounds + (page.margins[:top] / 2.0)], align: :left
+            end
+          end
+        end
+      end
+    end
   end
 
   def stamp_footer doc, opts = {}
