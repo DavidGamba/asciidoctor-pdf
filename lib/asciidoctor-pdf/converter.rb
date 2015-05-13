@@ -136,6 +136,9 @@ class Converter < ::Prawn::Document
 
     # TODO enable pagenums by default (perhaps upstream?)
     stamp_page_numbers skip: num_front_matter_pages if doc.attr 'pagenums'
+    if doc.attr?('footer') || doc.attr?('footer-left') || doc.attr?('footer-right')
+      stamp_footer doc
+    end
     add_outline doc, num_toc_levels, toc_page_nums, num_front_matter_pages
     catalog.data[:ViewerPreferences] = [:FitWindow]
 
@@ -1205,6 +1208,37 @@ class Converter < ::Prawn::Document
     min_height < max_size ? min_height : max_size
   end
 
+  def stamp_footer doc, opts = {}
+    skip = opts[:skip] || 0
+    start = skip + 0
+    repeat (start..page_count), dynamic: true do
+      # don't stamp pages which are imported / inserts
+      next if page.imported_page?
+      theme_font :footer do
+        canvas do
+          if @theme.footer_border_color && @theme.footer_border_color != 'transparent'
+            save_graphics_state do
+              line_width @theme.base_border_width
+              stroke_color @theme.footer_border_color
+              stroke_horizontal_line left_margin, bounds.width - right_margin, at: (page.margins[:bottom] / 2.0 + @theme.vertical_rhythm / 2.0)
+            end
+          end
+          indent left_margin + 20, right_margin + 20 do
+            if doc.attr? 'footer'
+              formatted_text_box [text: doc.attr('footer'), color: @theme.footer_font_color], at: [0, (page.margins[:bottom] / 2.0)], align: :center
+            end
+            if doc.attr? 'footer-right'
+              formatted_text_box [text: doc.attr('footer-right'), color: @theme.footer_font_color], at: [0, (page.margins[:bottom] / 2.0)], align: :right
+            end
+            if doc.attr? 'footer-left'
+              formatted_text_box [text: doc.attr('footer-left'), color: @theme.footer_font_color], at: [0, (page.margins[:bottom] / 2.0)], align: :left
+            end
+          end
+        end
+      end
+    end
+  end
+
   def stamp_page_numbers opts = {}
     skip = opts[:skip] || 1
     start = skip + 1
@@ -1220,13 +1254,6 @@ class Converter < ::Prawn::Document
       end
       theme_font :footer do
         canvas do
-          if @theme.footer_border_color && @theme.footer_border_color != 'transparent'
-            save_graphics_state do
-              line_width @theme.base_border_width
-              stroke_color @theme.footer_border_color
-              stroke_horizontal_line left_margin, bounds.width - right_margin, at: (page.margins[:bottom] / 2.0 + @theme.vertical_rhythm / 2.0)
-            end
-          end
           indent left_margin, right_margin do
             formatted_text_box [text: page_number_label, color: @theme.footer_font_color], at: [0, (page.margins[:bottom] / 2.0)], align: align
           end
